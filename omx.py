@@ -2,18 +2,25 @@
 
 import os,sys
 
-os.chdir("10.data/")
+first_index=3
+prefix="h2o"
+System_name="h2o"
+omx_input_name="H2O"
+
+os.chdir(f"{first_index}0.data/")
 # 2回目以降
-# os.remove("met.evp")
-# os.remove("met.for")
-# os.remove("met.in")
-# os.remove("met.pos")
+# os.remove(f"{prefix}.evp")
+# os.remove(f"{prefix}.for")
+# os.remove(f"{prefix}.in")
+# os.remove(f"{prefix}.pos")
 
 Ang2Bohr=1.88973 #Ang->Bohr
 force=1.0 #Har/Bohr->Har/Bohr
 
-nat=5
+nat=3
 ntyp=2
+species_1="H"
+species_2="O"
 
 # ファイルの書き込み関数
 def write_file(file_name, content):
@@ -25,7 +32,7 @@ def append_file(file_name, content):
     with open(file_name, 'a') as file:
         file.write(content)
 
-# //iterout.c
+# //iterout.c from OpenMX soure code
 # /* 1: */
 # /* 2,3,4: */
 # /* 5,6,7: force *   
@@ -36,9 +43,9 @@ def append_file(file_name, content):
 # /* 12: magnetic moment (muB) */
 # /* 13,14: angles of spin */  
 
-# met.evp ファイルの生成
-write_file("met.evp", "#   nfi    time(ps)        ekinc        T_cell(K)     Tion(K)             etot\n")
-with open("met.md", 'r') as md_file:
+# prefix.evp ファイルの生成
+write_file(f"{prefix}.evp", "#   nfi    time(ps)        ekinc        T_cell(K)     Tion(K)             etot\n")
+with open(f"{prefix}.md", 'r') as md_file:
     lines = md_file.readlines()
     nfi=0
     for index, line in enumerate(lines):
@@ -51,40 +58,40 @@ with open("met.md", 'r') as md_file:
             Tion = float(parts[7])
             etot = float(parts[4]) #Hartree->Hartree
             evp_line = f"     {nfi}  {time_ps:.6e}  {ekinc:.6e}  {T_cell:.6e}  {Tion:.6e}        {etot:.6e}\n"
-            append_file("met.evp", evp_line)
+            append_file(f"{prefix}.evp", evp_line)
 
-# met.for ファイルの生成
-with open("met.md", 'r') as md_file:
+# prefix.for ファイルの生成
+with open(f"{System_name}.md", 'r') as md_file:
     lines = md_file.readlines()
     cnt=0
     for index, line in enumerate(lines):
-        if "C " in line or "H " in line:
+        if f"{species_1} " in line or f"{species_2} " in line:
             cnt+=1
             if (cnt -1)% nat == 0:
                 for_line = f"{      cnt // nat + 1}\n"
-                append_file("met.for",for_line)
+                append_file(f"{prefix}.for",for_line)
             parts = line.split()
             for_line = f"    {float(parts[4])*force:.6e}    {float(parts[5])*force:.6e}    {float(parts[6])*force:.6e}\n"
-            append_file("met.for", for_line)
+            append_file(f"{prefix}.for", for_line)
 
-# met.pos ファイルの生成
-with open("met.md", 'r') as md_file:
+# prefix.pos ファイルの生成
+with open(f"{prefix}.md", 'r') as md_file:
     lines = md_file.readlines()
     cnt=0
     for index, line in enumerate(lines):
-        if "C " in line or "H " in line:
+        if f"{species_1} " in line or f"{species_2} " in line:
             cnt+=1
             if (cnt -1)% nat == 0:
                 for_line = f"{cnt // nat + 1}\n"
-                append_file("met.pos",for_line)
+                append_file(f"{prefix}.pos",for_line)
             parts = line.split()
             for_line = f"    {float(parts[1])*Ang2Bohr:.6e}    {float(parts[2])*Ang2Bohr:.6e}    {float(parts[3])*Ang2Bohr:.6e}\n"
-            append_file("met.pos", for_line)
+            append_file(f"{prefix}.pos", for_line)
 
-# met.in ファイルの生成
-write_file("met.in", f" &control\n /\n &system\n    ibrav = 14,\n    celldm(1) = 12.0,\n    celldm(2) = 1.0,\n    celldm(3) = 1.0,\n    celldm(4) = 0.0,\n    celldm(5) = 0.0,\n    celldm(6) = 0.0,\n    nat  = {nat},\n    ntyp = {ntyp},\n /\n &electrons\n /\n &ions\n /\n &cell\n /\nATOMIC_SPECIES\n")
+# prefix.in ファイルの生成
+write_file(f"{prefix}.in", f" &control\n /\n &system\n    ibrav = 1,\n    celldm(1) = 1.0,\n    nat  = {nat},\n    ntyp = {ntyp},\n /\n &electrons\n /\n &ions\n /\n &cell\n /\nATOMIC_SPECIES\n")
 
-with open("Methane.dat", 'r') as dat_file:
+with open(f"{omx_input_name}.dat", 'r') as dat_file:
     lines = dat_file.readlines()
     species = []
     species_mode=False
@@ -97,10 +104,10 @@ with open("Methane.dat", 'r') as dat_file:
             parts = line.split()
             species.append(f"{parts[0]} 1.00d0 H.blyp-vbc.UPF")
     species_content = "\n".join(species)
-    append_file("met.in", species_content)
-    append_file("met.in","\n")
+    append_file(f"{prefix}.in", species_content)
+    append_file(f"{prefix}.in","\n")
 
-with open("Methane.dat", 'r') as dat_file:
+with open(f"{omx_input_name}.dat", 'r') as dat_file:
     lines = dat_file.readlines()
     coords = []
     coords_mode=False
@@ -113,4 +120,4 @@ with open("Methane.dat", 'r') as dat_file:
             parts = line.split()
             coords.append(f"{parts[1]} {float(parts[2])*Ang2Bohr} {float(parts[3])*Ang2Bohr} {float(parts[4])*Ang2Bohr}")
     coords_content = "\n".join(coords)
-    append_file("met.in", "ATOMIC_POSITIONS (bohr)\n" + coords_content)
+    append_file(f"{prefix}.in", "ATOMIC_POSITIONS (bohr)\n" + coords_content)
