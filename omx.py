@@ -2,10 +2,10 @@
 
 import os, sys
 
-first_index = 3
-prefix = "h2o"
-System_name = "h2o"
-omx_input_name = "H2O"
+first_index = 0
+prefix = "si8"
+System_name = "si8"
+omx_input_name = "Si8"
 
 os.chdir(f"{first_index}0.data/")
 # 2回目以降
@@ -21,10 +21,8 @@ if os.path.exists(f"{prefix}.pos"):
 Ang2Bohr = 1.88973  # Ang->Bohr
 force = 1.0  # Har/Bohr->Har/Bohr
 
-nat = 3
-ntyp = 2
-species_1 = "H"
-species_2 = "O"
+species_1 = "Si"
+species_2 = "VACANT"
 
 
 # ファイルの書き込み関数
@@ -49,6 +47,54 @@ def append_file(file_name, content):
 # /* 11: Net charge, electron charge is defined to be negative. */
 # /* 12: magnetic moment (muB) */
 # /* 13,14: angles of spin */
+
+# ntyp, nat の取得
+with open(f"{omx_input_name}.dat", "r") as dat_file:
+    lines = dat_file.readlines()
+    ntyp, nat = 0, 0
+    for line in lines:
+        if "Species.Number" in line:
+            parts = line.split()
+            ntyp = int(parts[1])
+        elif "Atoms.Number" in line:
+            parts = line.split()
+            nat = int(parts[1])
+        elif (ntyp and ntyp) is True:
+            break
+
+# prefix.in ファイルの生成
+write_file(
+    f"{prefix}.in",
+    f" &control\n /\n &system\n    ibrav = 1,\n    celldm(1) = 1.0,\n    nat  = {nat},\n    ntyp = {ntyp},\n /\n &electrons\n /\n &ions\n /\n &cell\n /\nATOMIC_SPECIES\n",
+)
+
+with open(f"{omx_input_name}.dat", "r") as dat_file:
+    lines = dat_file.readlines()
+    species, coords = [], []
+    species_mode, coords_mode = False, False
+    for line in lines:
+        if "<Definition.of.Atomic.Species" in line:
+            species_mode = True
+        elif "Definition.of.Atomic.Species>" in line:
+            species_mode = False
+        elif species_mode:
+            parts = line.split()
+            species.append(f"{parts[0]} 1.00d0 H.blyp-vbc.UPF")
+    species_content = "\n".join(species)
+    append_file(f"{prefix}.in", species_content)
+    append_file(f"{prefix}.in", "\n")
+    for line in lines:
+        if "<Atoms.SpeciesAndCoordinates" in line:
+            coords_mode = True
+        elif "Atoms.SpeciesAndCoordinates>" in line:
+            coords_mode = False
+        elif coords_mode:
+            parts = line.split()
+            coords.append(
+                f"{parts[1]} {float(parts[2])*Ang2Bohr} {float(parts[3])*Ang2Bohr} {float(parts[4])*Ang2Bohr}"
+            )
+    coords_content = "\n".join(coords)
+    append_file(f"{prefix}.in", "ATOMIC_POSITIONS (bohr)\n" + coords_content)
 
 # prefix.evp ファイルの生成
 write_file(
@@ -97,42 +143,3 @@ with open(f"{prefix}.md", "r") as md_file:
             parts = line.split()
             for_line = f"    {float(parts[1])*Ang2Bohr:.6e}    {float(parts[2])*Ang2Bohr:.6e}    {float(parts[3])*Ang2Bohr:.6e}\n"
             append_file(f"{prefix}.pos", for_line)
-
-# prefix.in ファイルの生成
-write_file(
-    f"{prefix}.in",
-    f" &control\n /\n &system\n    ibrav = 1,\n    celldm(1) = 1.0,\n    nat  = {nat},\n    ntyp = {ntyp},\n /\n &electrons\n /\n &ions\n /\n &cell\n /\nATOMIC_SPECIES\n",
-)
-
-with open(f"{omx_input_name}.dat", "r") as dat_file:
-    lines = dat_file.readlines()
-    species = []
-    species_mode = False
-    for line in lines:
-        if "<Definition.of.Atomic.Species" in line:
-            species_mode = True
-        elif "Definition.of.Atomic.Species>" in line:
-            species_mode = False
-        elif species_mode:
-            parts = line.split()
-            species.append(f"{parts[0]} 1.00d0 H.blyp-vbc.UPF")
-    species_content = "\n".join(species)
-    append_file(f"{prefix}.in", species_content)
-    append_file(f"{prefix}.in", "\n")
-
-with open(f"{omx_input_name}.dat", "r") as dat_file:
-    lines = dat_file.readlines()
-    coords = []
-    coords_mode = False
-    for line in lines:
-        if "<Atoms.SpeciesAndCoordinates" in line:
-            coords_mode = True
-        elif "Atoms.SpeciesAndCoordinates>" in line:
-            coords_mode = False
-        elif coords_mode:
-            parts = line.split()
-            coords.append(
-                f"{parts[1]} {float(parts[2])*Ang2Bohr} {float(parts[3])*Ang2Bohr} {float(parts[4])*Ang2Bohr}"
-            )
-    coords_content = "\n".join(coords)
-    append_file(f"{prefix}.in", "ATOMIC_POSITIONS (bohr)\n" + coords_content)
