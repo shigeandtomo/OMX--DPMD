@@ -3,9 +3,9 @@
 import os, sys
 
 first_index = 0
-prefix = "si8"
-System_name = "si8"
-omx_input_name = "Si8"
+prefix = "met"
+System_name = "met"
+omx_input_name = "Methane"
 
 os.chdir(f"{first_index}0.data/")
 # 2回目以降
@@ -20,10 +20,6 @@ if os.path.exists(f"{prefix}.pos"):
 
 Ang2Bohr = 1.88973  # Ang->Bohr
 force = 1.0  # Har/Bohr->Har/Bohr
-
-species_1 = "Si"
-species_2 = "VACANT"
-
 
 # ファイルの書き込み関数
 def write_file(file_name, content):
@@ -49,18 +45,35 @@ def append_file(file_name, content):
 # /* 13,14: angles of spin */
 
 # ntyp, nat の取得
+# with open(f"{omx_input_name}.dat", "r") as dat_file:
+#     lines = dat_file.readlines()
+#     ntyp, nat = 0, 0
+#     for line in lines:
+#         if "Species.Number" in line:
+#             parts = line.split()
+#             ntyp = int(parts[1])
+#         elif "Atoms.Number" in line:
+#             parts = line.split()
+#             nat = int(parts[1])
+#         elif (ntyp and ntyp) is True:
+#             break
+
+# atoms.symbols, nat, ntypの取得
 with open(f"{omx_input_name}.dat", "r") as dat_file:
     lines = dat_file.readlines()
-    ntyp, nat = 0, 0
+    symbols = []
+    symbols_mode = False
     for line in lines:
-        if "Species.Number" in line:
+        if "<Atoms.SpeciesAndCoordinates" in line:
+            symbols_mode = True
+        elif "Atoms.SpeciesAndCoordinates>" in line:
+            symbols_mode = False
+        elif symbols_mode:
             parts = line.split()
-            ntyp = int(parts[1])
-        elif "Atoms.Number" in line:
-            parts = line.split()
-            nat = int(parts[1])
-        elif (ntyp and ntyp) is True:
-            break
+            symbols.append(parts[1])
+    nat=len(symbols)
+    symbols = list(set(symbols))
+    ntyp=len(symbols)
 
 # prefix.in ファイルの生成
 write_file(
@@ -121,7 +134,7 @@ with open(f"{System_name}.md", "r") as md_file:
     lines = md_file.readlines()
     cnt = 0
     for index, line in enumerate(lines):
-        if f"{species_1} " in line or f"{species_2} " in line:
+        if f"{symbols[0]} " in line or f"{symbols[1]} " in line:
             cnt += 1
             if (cnt - 1) % nat == 0:
                 for_line = f"{      cnt // nat + 1}\n"
@@ -135,7 +148,7 @@ with open(f"{prefix}.md", "r") as md_file:
     lines = md_file.readlines()
     cnt = 0
     for index, line in enumerate(lines):
-        if f"{species_1} " in line or f"{species_2} " in line:
+        if f"{symbols[0]} " in line or f"{symbols[1]} " in line:
             cnt += 1
             if (cnt - 1) % nat == 0:
                 for_line = f"{cnt // nat + 1}\n"
