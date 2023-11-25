@@ -1,4 +1,7 @@
-# OMX2DPMD
-Interface from OpenMX to DeePMD-kit <br>
-<br>
-・ This supports upto binary compounds.
+# OMX2QE
+
+## How to use
+
+```
+python3 omx2qe.py
+```
