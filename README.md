@@ -3,5 +3,5 @@
 ## How to use
 
 ```
-python3 omx2qe.py
+$ python3 omx2qe.py
 ```
